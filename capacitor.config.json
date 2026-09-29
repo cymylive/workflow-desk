@@ -12,8 +12,7 @@
       "enabled": true
     },
     "SystemBars": {
-      "insetsHandling": "css",
-      "initialViewportFitValueHint": "cover",
+      "insetsHandling": "disable",
       "style": "DEFAULT"
     }
   }

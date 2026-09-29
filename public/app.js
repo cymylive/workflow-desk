@@ -1406,10 +1406,38 @@
     });
   }
 
+  /* 诊断：把当前 safe-area 值写到 body 上，方便手机端排查 */
+  function setupSafeAreaDiag() {
+    function readVar(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+    function update() {
+      var info = {
+        sat: readVar('--sat'),
+        sab: readVar('--sab'),
+        rawTop: readVar('--safe-area-inset-top'),
+        rawBottom: readVar('--safe-area-inset-bottom'),
+        native: !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
+      };
+      window.__safeArea = info;
+      document.body.setAttribute('data-safe-area',
+        'sat=' + (info.sat || '0') + ' sab=' + (info.sab || '0') +
+        ' rawTop=' + (info.rawTop || '-') + ' rawBot=' + (info.rawBottom || '-'));
+    }
+    update();
+    // 原生 insets 可能在页面加载后才注入，多刷几次
+    setTimeout(update, 300);
+    setTimeout(update, 1000);
+    setTimeout(update, 2500);
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', function () { setTimeout(update, 300); });
+  }
+
   function boot() {
     loadUi();
     applyTheme();
     bindGlobal();
+    setupSafeAreaDiag();
 
     if (!window.Storage) {
       setSaveState('error', '加载失败');
