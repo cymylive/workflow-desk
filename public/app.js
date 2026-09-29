@@ -256,13 +256,18 @@
     var btn = $('#btnTheme');
     if (btn) btn.textContent = ui.theme === 'dark' ? '☀' : '◐';
 
-    // 同步系统状态栏样式（仅 APK 内有效）
+    // 同步系统状态栏/导航栏图标颜色（仅 APK 内有效）
+    // Capacitor 8 用 SystemBars 插件（StatusBar 插件在 Android 15+ 已失效）
     try {
-      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar) {
-        var SB = window.Capacitor.Plugins.StatusBar;
-        // 浅色主题 → 状态栏深色图标；深色主题 → 浅色图标
-        SB.setStyle({ style: ui.theme === 'dark' ? 'DARK' : 'LIGHT' });
-        SB.setOverlaysWebView({ overlay: true });
+      var P = window.Capacitor && window.Capacitor.Plugins;
+      if (P) {
+        var style = ui.theme === 'dark' ? 'DARK' : 'LIGHT';
+        if (P.SystemBars && P.SystemBars.setStyle) {
+          P.SystemBars.setStyle({ style: style });
+        } else if (P.StatusBar && P.StatusBar.setStyle) {
+          // 老版本 Capacitor 的兜底
+          P.StatusBar.setStyle({ style: style });
+        }
       }
     } catch (e) {}
 
