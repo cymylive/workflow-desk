@@ -83,6 +83,15 @@ body {
   height: 100dvh;
 }
 
+/* ---------- 安全区（Android 状态栏 / 导航栏 / 刘海） ---------- */
+
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
 /* ---------- 连接状态徽章 ---------- */
 
 .conn-badge {
@@ -123,7 +132,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 18px;
+  padding: calc(10px + var(--sat)) calc(18px + var(--sar)) 10px calc(18px + var(--sal));
   background: var(--bg-elev);
   border-bottom: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
@@ -403,7 +412,7 @@ body {
 .content {
   flex: 1 1 auto;
   overflow-y: auto;
-  padding: 22px 26px 60px;
+  padding: 22px calc(26px + var(--sar)) calc(60px + var(--sab)) calc(26px + var(--sal));
   min-width: 0;
 }
 
@@ -870,7 +879,8 @@ body {
 .btn-side-toggle {
   display: none;
   position: fixed;
-  right: 16px; bottom: 16px;
+  right: calc(16px + var(--sar));
+  bottom: calc(16px + var(--sab));
   width: 48px; height: 48px;
   border-radius: 50%;
   border: none;
@@ -900,7 +910,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: calc(20px + var(--sat)) calc(20px + var(--sar)) calc(20px + var(--sab)) calc(20px + var(--sal));
   z-index: 100;
   animation: fade .14s ease;
   backdrop-filter: blur(3px);
@@ -1122,7 +1132,7 @@ body {
 #toastWrap {
   position: fixed;
   left: 50%;
-  bottom: 26px;
+  bottom: calc(26px + var(--sab));
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
@@ -1178,12 +1188,14 @@ body {
     transform: translateX(-100%);
     transition: transform .24s ease;
     box-shadow: var(--shadow-lg);
+    padding-top: var(--sat);
+    padding-bottom: var(--sab);
   }
   .sidebar.open { transform: translateX(0); }
   .sidebar.open + .content ~ .backdrop,
   .backdrop.show { display: block; }
 
-  .content { padding: 16px 14px 90px; }
+  .content { padding: 16px calc(14px + var(--sar)) calc(90px + var(--sab)) calc(14px + var(--sal)); }
 
   .topbar { padding: 8px 12px; gap: 8px; }
   .brand-text h1 { font-size: 14px; }
