@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">工作流工具台</string>
+    <string name="title_activity_main">工作流工具台</string>
+    <string name="package_name">com.cymylive.workflowdesk</string>
+    <string name="custom_url_scheme">com.cymylive.workflowdesk</string>
+</resources>

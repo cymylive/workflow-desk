@@ -1,0 +1,30 @@
+# ---- 依赖 ----
+node_modules/
+
+# ---- 电脑端数据（本地私有，不入库）----
+data/
+backups/
+
+# ---- 日志与临时 ----
+*.log
+npm-debug.log*
+
+# ---- Android 构建产物 ----
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/.idea/
+android/captures/
+android/app/release/
+android/app/debug/
+*.apk
+*.aab
+*.keystore
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

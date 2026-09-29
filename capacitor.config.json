@@ -1,0 +1,15 @@
+{
+  "appId": "com.cymylive.workflowdesk",
+  "appName": "工作流工具台",
+  "webDir": "public",
+  "server": {
+    "androidScheme": "https",
+    "allowMixedContent": true,
+    "cleartext": true
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

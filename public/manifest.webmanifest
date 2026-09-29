@@ -1,0 +1,10 @@
+{
+  "name": "工作流工具台",
+  "short_name": "工作流",
+  "description": "设计、跟踪和迭代你的生活与工作流",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#3b6ef5",
+  "lang": "zh-CN"
+}
