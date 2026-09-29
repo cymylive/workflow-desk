@@ -95,12 +95,6 @@ body {
   --sar: 0px;
 }
 
-/* APK 内（原生 WebView）：给固定兜底值。
-   即使原生注入失败，界面也不会被状态栏遮挡。 */
-html.is-native-app {
-  --sat: var(--safe-area-inset-top, 32px);
-  --sab: var(--safe-area-inset-bottom, 48px);
-}
 
 /* ---------- 连接状态徽章 ---------- */
 
