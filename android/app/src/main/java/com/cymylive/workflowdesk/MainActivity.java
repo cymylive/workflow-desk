@@ -8,69 +8,115 @@ import android.webkit.WebView;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import com.getcapacitor.Bridge;
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.WebViewListener;
 
 /**
- * 直接给 WebView 设置 padding，让它避开状态栏和导航栏。
+ * 把系统栏（状态栏 / 导航栏）高度注入成 CSS 变量 --safe-area-inset-*。
  *
- * 背景：Android 16+ 对所有应用强制 edge-to-edge（不管 targetSdk），
- * WebView 会画到状态栏下面；CSS env(safe-area-inset-*) 在 Android WebView
- * 里不可用，Capacitor 的 SystemBars 插件也不够可靠。
- *
- * 用 Android 原生 WindowInsets API 给 WebView 物理区域加 padding，
- * WebView 内容区就从状态栏下方开始。不需要前端任何配合，最可靠。
+ * 三条路径同时走，互为兜底：
+ *   1. onCreate 时给 WebView 加 OnApplyWindowInsetsListener（系统栏变化实时更新）
+ *   2. 页面加载完成后（onPageLoaded）再注入一次（防止首次回调时 WebView 未就绪）
+ *   3. 前端 CSS 里默认给了 32px/48px 兜底（即使上面都失败也能用）
  */
 public class MainActivity extends BridgeActivity {
 
     private static final String TAG = "WorkflowDesk";
 
+    private int lastTop = -1, lastBottom = -1, lastLeft = -1, lastRight = -1;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         applyInsetsWithRetry(0);
+
+        // 页面加载完再注入一次（修正 WebView 首次回调时机问题）
+        try {
+            if (getBridge() != null) {
+                getBridge().addWebViewListener(new WebViewListener() {
+                    @Override
+                    public void onPageLoaded(WebView webView) {
+                        super.onPageLoaded(webView);
+                        Log.d(TAG, "onPageLoaded, reinject: top=" + lastTop
+                                + " bottom=" + lastBottom);
+                        if (lastTop >= 0) {
+                            injectInsets(lastTop, lastBottom, lastLeft, lastRight);
+                        } else {
+                            // 监听器还没回调过，用系统资源兜底
+                            int t = getSystemDimen("status_bar_height", 32);
+                            int b = getSystemDimen("navigation_bar_height", 48);
+                            float d = getResources().getDisplayMetrics().density;
+                            injectInsets(Math.round(t / d), Math.round(b / d), 0, 0);
+                        }
+                    }
+                });
+            } else {
+                Log.w(TAG, "getBridge() null in onCreate");
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "addWebViewListener failed", t);
+        }
     }
 
     private void applyInsetsWithRetry(final int attempt) {
-        WebView webView = getBridge() != null ? getBridge().getWebView() : null;
-
+        WebView webView = (getBridge() != null) ? getBridge().getWebView() : null;
         if (webView == null) {
             if (attempt < 15) {
-                Log.d(TAG, "WebView not ready, retry #" + attempt);
                 new Handler(Looper.getMainLooper()).postDelayed(
                     () -> applyInsetsWithRetry(attempt + 1), 200);
-            } else {
-                Log.w(TAG, "WebView still null after 15 retries, giving up");
             }
             return;
         }
 
-        Log.d(TAG, "WebView found at attempt #" + attempt + ", applying insets listener");
-
-        final int fallbackTop = getSystemDimen("status_bar_height", 24);
-        final int fallbackBottom = getSystemDimen("navigation_bar_height", 48);
-        final boolean[] insetsFired = { false };
+        Log.d(TAG, "WebView ready at attempt " + attempt);
 
         ViewCompat.setOnApplyWindowInsetsListener(webView, (v, windowInsets) -> {
             Insets bars = windowInsets.getInsets(
                 WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout()
             );
-            Log.d(TAG, "[insets] top=" + bars.top + " bottom=" + bars.bottom
-                    + " left=" + bars.left + " right=" + bars.right);
-            v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
-            insetsFired[0] = true;
-            return WindowInsetsCompat.CONSUMED;
+            float density = getResources().getDisplayMetrics().density;
+            int top = Math.round(bars.top / density);
+            int bottom = Math.round(bars.bottom / density);
+            int left = Math.round(bars.left / density);
+            int right = Math.round(bars.right / density);
+
+            if (top != lastTop || bottom != lastBottom
+                    || left != lastLeft || right != lastRight) {
+                lastTop = top;
+                lastBottom = bottom;
+                lastLeft = left;
+                lastRight = right;
+                Log.d(TAG, "[insets] top=" + top + " bottom=" + bottom
+                        + " left=" + left + " right=" + right + " density=" + density);
+                injectInsets(top, bottom, left, right);
+            }
+            return windowInsets;
         });
 
         webView.requestApplyInsets();
+    }
 
-        // 兜底：1 秒后 insets 还没来，用系统资源里的固定高度
-        webView.postDelayed(() -> {
-            if (!insetsFired[0]) {
-                Log.w(TAG, "Insets listener not fired within 1s, using fallback: top="
-                        + fallbackTop + " bottom=" + fallbackBottom);
-                webView.setPadding(0, fallbackTop, 0, fallbackBottom);
+    private void injectInsets(int top, int bottom, int left, int right) {
+        if (getBridge() == null || getBridge().getWebView() == null) return;
+
+        String js = "(function(){try{"
+                + "var r=document.documentElement.style;"
+                + "r.setProperty('--safe-area-inset-top','" + top + "px');"
+                + "r.setProperty('--safe-area-inset-bottom','" + bottom + "px');"
+                + "r.setProperty('--safe-area-inset-left','" + left + "px');"
+                + "r.setProperty('--safe-area-inset-right','" + right + "px');"
+                + "console.log('[WorkflowDesk] insets injected: top=" + top
+                + " bottom=" + bottom + "');"
+                + "}catch(e){}})();";
+
+        getBridge().getWebView().post(() -> {
+            try {
+                getBridge().getWebView().evaluateJavascript(js, null);
+            } catch (Throwable t) {
+                Log.w(TAG, "evaluateJavascript failed", t);
             }
-        }, 1000);
+        });
     }
 
     private int getSystemDimen(String name, int defaultDp) {
@@ -79,7 +125,8 @@ public class MainActivity extends BridgeActivity {
             int px = getResources().getDimensionPixelSize(id);
             if (px > 0) return px;
         }
-        float density = getResources().getDisplayMetrics().density;
-        return Math.round(defaultDp * density);
+        return Math.round(defaultPx(defaultDp) * getResources().getDisplayMetrics().density);
     }
+
+    private int defaultPx(int dp) { return dp; }
 }

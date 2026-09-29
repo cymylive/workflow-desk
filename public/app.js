@@ -1433,8 +1433,27 @@
     window.addEventListener('orientationchange', function () { setTimeout(update, 300); });
   }
 
+  /** 判断是否跑在 APK 里（原生 WebView），加 class 让 CSS 用兜底安全区 */
+  function setupPlatformClass() {
+    var native = false;
+    try {
+      native = !!(window.Capacitor &&
+                  window.Capacitor.isNativePlatform &&
+                  window.Capacitor.isNativePlatform());
+    } catch (e) {}
+    // 兼容部分壳：schema 不是 http/https 也视为原生
+    try {
+      if (!native && location.protocol !== 'http:' && location.protocol !== 'https:') {
+        native = true;
+      }
+    } catch (e) {}
+    document.documentElement.classList.toggle('is-native-app', native);
+    return native;
+  }
+
   function boot() {
     loadUi();
+    setupPlatformClass();
     applyTheme();
     bindGlobal();
     setupSafeAreaDiag();
