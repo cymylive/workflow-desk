@@ -101,7 +101,7 @@ public class WorkflowServer extends NanoHTTPD {
                 Log.e(TAG, "PUT /api/state JSON 解析失败, body 前 200 字符: "
                         + body.substring(0, Math.min(200, body.length())), pe);
                 return json(Response.Status.BAD_REQUEST,
-                        "{\"error\":\"JSON 解析失败: \" + escape(pe.getMessage()) + "\"}");
+                        "{\"error\":\"JSON 解析失败: " + escape(pe.getMessage()) + "\"}");
             }
             if (!obj.has("workflows") || !(obj.get("workflows") instanceof JSONArray)) {
                 return json(Response.Status.BAD_REQUEST, "{\"error\":\"缺少 workflows 数组\"}");
@@ -130,7 +130,7 @@ public class WorkflowServer extends NanoHTTPD {
                 obj = new JSONObject(body);
             } catch (Exception pe) {
                 return json(Response.Status.BAD_REQUEST,
-                        "{\"error\":\"JSON 解析失败: \" + escape(pe.getMessage()) + "\"}");
+                        "{\"error\":\"JSON 解析失败: " + escape(pe.getMessage()) + "\"}");
             }
             if (!obj.has("workflows")) {
                 return json(Response.Status.BAD_REQUEST, "{\"error\":\"不是有效的备份文件\"}");
