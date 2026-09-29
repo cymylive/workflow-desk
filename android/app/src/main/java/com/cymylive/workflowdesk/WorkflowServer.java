@@ -90,7 +90,19 @@ public class WorkflowServer extends NanoHTTPD {
 
         if (uri.equals("/api/state") && method == Method.PUT) {
             String body = readBody(session);
-            JSONObject obj = new JSONObject(body);
+            if (body == null || body.trim().isEmpty()) {
+                Log.w(TAG, "PUT /api/state 收到空 body");
+                return json(Response.Status.BAD_REQUEST, "{\"error\":\"请求体为空\"}");
+            }
+            JSONObject obj;
+            try {
+                obj = new JSONObject(body);
+            } catch (Exception pe) {
+                Log.e(TAG, "PUT /api/state JSON 解析失败, body 前 200 字符: "
+                        + body.substring(0, Math.min(200, body.length())), pe);
+                return json(Response.Status.BAD_REQUEST,
+                        "{\"error\":\"JSON 解析失败: \" + escape(pe.getMessage()) + "\"}");
+            }
             if (!obj.has("workflows") || !(obj.get("workflows") instanceof JSONArray)) {
                 return json(Response.Status.BAD_REQUEST, "{\"error\":\"缺少 workflows 数组\"}");
             }
@@ -110,7 +122,16 @@ public class WorkflowServer extends NanoHTTPD {
 
         if (uri.equals("/api/import") && method == Method.POST) {
             String body = readBody(session);
-            JSONObject obj = new JSONObject(body);
+            if (body == null || body.trim().isEmpty()) {
+                return json(Response.Status.BAD_REQUEST, "{\"error\":\"请求体为空\"}");
+            }
+            JSONObject obj;
+            try {
+                obj = new JSONObject(body);
+            } catch (Exception pe) {
+                return json(Response.Status.BAD_REQUEST,
+                        "{\"error\":\"JSON 解析失败: \" + escape(pe.getMessage()) + "\"}");
+            }
             if (!obj.has("workflows")) {
                 return json(Response.Status.BAD_REQUEST, "{\"error\":\"不是有效的备份文件\"}");
             }
@@ -140,7 +161,16 @@ public class WorkflowServer extends NanoHTTPD {
 
         if (uri.equals("/api/backups/restore") && method == Method.POST) {
             String body = readBody(session);
-            JSONObject req = new JSONObject(body);
+            if (body == null || body.trim().isEmpty()) {
+                return json(Response.Status.BAD_REQUEST, "{\"error\":\"请求体为空\"}");
+            }
+            JSONObject req;
+            try {
+                req = new JSONObject(body);
+            } catch (Exception pe) {
+                return json(Response.Status.BAD_REQUEST,
+                        "{\"error\":\"JSON 解析失败\"}");
+            }
             String file = req.optString("file", "");
             if (!file.matches("^[A-Za-z0-9._-]+\\.json$")) {
                 return json(Response.Status.BAD_REQUEST, "{\"error\":\"文件名不合法\"}");
@@ -300,11 +330,27 @@ public class WorkflowServer extends NanoHTTPD {
 
     /* ==================== 工具 ==================== */
 
-    private String readBody(IHTTPSession session) throws IOException, ResponseException {
-        Map<String, String> body = new HashMap<>();
-        session.parseBody(body);
-        String post = body.get("postData");
-        return post != null ? post : "";
+    /**
+     * 直接读 InputStream，不依赖 NanoHTTPD 的 parseBody。
+     *
+     * parseBody 依赖 Content-Type 判断，对 PUT + application/json 不可靠，
+     * 经常返回空字符串，导致 new JSONObject("") 抛
+     * "End of input at character 0 of"。
+     */
+    private String readBody(IHTTPSession session) throws IOException {
+        long size = session.getBodySize();
+        if (size <= 0) return "";
+
+        byte[] buf = new byte[(int) Math.min(size, 8 * 1024 * 1024)];
+        int off = 0;
+        try (InputStream is = session.getInputStream()) {
+            while (off < buf.length) {
+                int n = is.read(buf, off, buf.length - off);
+                if (n < 0) break;
+                off += n;
+            }
+        }
+        return new String(buf, 0, off, StandardCharsets.UTF_8);
     }
 
     private static String readText(File f) throws IOException {
