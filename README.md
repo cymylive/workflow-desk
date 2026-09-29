@@ -1,6 +1,8 @@
 # 工作流工具台
 
-一个用浏览器打开的本地软件，用来**设计、跟踪、迭代你的工作流**。
+[![Build APK](https://github.com/cymylive/workflow-desk/actions/workflows/build-apk.yml/badge.svg)](https://github.com/cymylive/workflow-desk/actions/workflows/build-apk.yml)
+
+一个用来**设计、跟踪、迭代你的工作流**的工具。电脑端是浏览器打开的本地软件，手机端是 Android APK。
 
 比如你可以建一套「让生活幸福的工作流」，把每个环节写清楚，标注进度，
 不断改进版本号 —— 让模糊的想法变成看得见、跑得动的流程。
