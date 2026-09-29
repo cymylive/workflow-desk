@@ -1,14 +1,14 @@
 package com.cymylive.workflowdesk;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.View;
-import android.webkit.WebView;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
-import com.getcapacitor.WebViewListener;
 
 /**
  * 用 Android 原生 WindowInsets API 获取系统栏高度，
@@ -68,20 +68,20 @@ public class MainActivity extends BridgeActivity {
             return insets;
         });
 
-        // 页面加载后补一次（首次回调时 WebView 可能还没就绪）
-        try {
-            addWebViewListener(new WebViewListener() {
-                @Override
-                public void onPageLoaded(WebView webView) {
-                    super.onPageLoaded(webView);
-                    Log.d(TAG, "onPageLoaded, reinject insets");
-                    if (lastTop >= 0) {
-                        injectInsets(lastTop, lastBottom, lastLeft, lastRight);
-                    }
+        // WebView 可能晚于首次 insets 回调就绪，延迟补注入几次
+        scheduleReinject();
+    }
+
+    private void scheduleReinject() {
+        final Handler h = new Handler(Looper.getMainLooper());
+        long[] delays = { 300, 800, 1500, 3000 };
+        for (long d : delays) {
+            h.postDelayed(() -> {
+                if (lastTop >= 0) {
+                    Log.d(TAG, "reinject @" + d + "ms");
+                    injectInsets(lastTop, lastBottom, lastLeft, lastRight);
                 }
-            });
-        } catch (Throwable t) {
-            Log.w(TAG, "addWebViewListener failed", t);
+            }, d);
         }
     }
 
@@ -91,17 +91,12 @@ public class MainActivity extends BridgeActivity {
             return;
         }
 
-        // 同时写两套变量名：
-        //   --safe-area-inset-*   标准名，Capacitor / 前端通用
-        //   --inset-top           冗余，方便诊断
         String js = "(function(){try{"
                 + "var r=document.documentElement.style;"
                 + "r.setProperty('--safe-area-inset-top','" + top + "px');"
                 + "r.setProperty('--safe-area-inset-bottom','" + bottom + "px');"
                 + "r.setProperty('--safe-area-inset-left','" + left + "px');"
                 + "r.setProperty('--safe-area-inset-right','" + right + "px');"
-                + "r.setProperty('--inset-top','" + top + "px');"
-                + "r.setProperty('--inset-bottom','" + bottom + "px');"
                 + "console.log('[WorkflowDesk] insets injected: top=" + top
                 + " bottom=" + bottom + " left=" + left + " right=" + right + "');"
                 + "}catch(e){console.error('[WorkflowDesk] inject error',e)}})();";
