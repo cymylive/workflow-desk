@@ -338,8 +338,7 @@ public class WorkflowServer extends NanoHTTPD {
      * "End of input at character 0 of"。
      */
     private String readBody(IHTTPSession session) throws IOException {
-        // NanoHTTPD 2.3.1 的 IHTTPSession 没有 getBodySize()，
-        // 从 Content-Length 头拿长度；缺失时最多读 1MB。
+        // NanoHTTPD 2.3.1 的 IHTTPSession 没有 getBodySize()，从 Content-Length 头拿长度。
         long size = 0;
         Map<String, String> headers = session.getHeaders();
         if (headers != null) {
@@ -355,17 +354,34 @@ public class WorkflowServer extends NanoHTTPD {
             }
         }
 
+        // 重要：NanoHTTPD 的 InputStream 读完 body 后不会返回 EOF，
+        // 用阻塞 read() 会永久等待，最终被 socket 超时断开（前端报 Failed to fetch）。
+        // NanoHTTPD 自己内部用的是 available()，我们也照做，并加超时保护。
         int cap = (int) Math.min(size > 0 ? size : (1024 * 1024), 8 * 1024 * 1024);
         byte[] buf = new byte[cap];
         int off = 0;
-        try (InputStream is = session.getInputStream()) {
-            while (off < cap) {
-                int n = is.read(buf, off, cap - off);
-                if (n < 0) break;
-                off += n;
+        InputStream is = session.getInputStream();
+        long deadline = System.currentTimeMillis() + 3000;
+
+        while (off < cap && System.currentTimeMillis() < deadline) {
+            int avail = is.available();
+            if (avail > 0) {
+                int toRead = Math.min(avail, cap - off);
+                int n = is.read(buf, off, toRead);
+                if (n > 0) {
+                    off += n;
+                    if (size > 0 && off >= size) break;
+                } else if (n < 0) {
+                    break;
+                }
+            } else {
                 if (size > 0 && off >= size) break;
+                if (size == 0 && off > 0) break;
+                try { Thread.sleep(10); } catch (InterruptedException ie) { break; }
             }
         }
+
+        Log.d(TAG, "readBody: content-length=" + size + ", 实读=" + off);
         return new String(buf, 0, off, StandardCharsets.UTF_8);
     }
 
