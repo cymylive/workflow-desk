@@ -338,16 +338,32 @@ public class WorkflowServer extends NanoHTTPD {
      * "End of input at character 0 of"。
      */
     private String readBody(IHTTPSession session) throws IOException {
-        long size = session.getBodySize();
-        if (size <= 0) return "";
+        // NanoHTTPD 2.3.1 的 IHTTPSession 没有 getBodySize()，
+        // 从 Content-Length 头拿长度；缺失时最多读 1MB。
+        long size = 0;
+        Map<String, String> headers = session.getHeaders();
+        if (headers != null) {
+            for (Map.Entry<String, String> e : headers.entrySet()) {
+                if (e.getKey() != null && e.getKey().equalsIgnoreCase("content-length")) {
+                    try {
+                        size = Long.parseLong(e.getValue().trim());
+                    } catch (NumberFormatException ex) {
+                        size = 0;
+                    }
+                    break;
+                }
+            }
+        }
 
-        byte[] buf = new byte[(int) Math.min(size, 8 * 1024 * 1024)];
+        int cap = (int) Math.min(size > 0 ? size : (1024 * 1024), 8 * 1024 * 1024);
+        byte[] buf = new byte[cap];
         int off = 0;
         try (InputStream is = session.getInputStream()) {
-            while (off < buf.length) {
-                int n = is.read(buf, off, buf.length - off);
+            while (off < cap) {
+                int n = is.read(buf, off, cap - off);
                 if (n < 0) break;
                 off += n;
+                if (size > 0 && off >= size) break;
             }
         }
         return new String(buf, 0, off, StandardCharsets.UTF_8);
