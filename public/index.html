@@ -2,6 +2,21 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
+<script>
+/* 浏览器环境立即把安全区归零。
+   判断依据：浏览器有端口号（如 :8317），Capacitor 的 origin 是 https://localhost 没有端口。 */
+(function () {
+  try {
+    if (location.port) {
+      var r = document.documentElement.style;
+      r.setProperty('--sat', '0px');
+      r.setProperty('--sab', '0px');
+      r.setProperty('--sal', '0px');
+      r.setProperty('--sar', '0px');
+    }
+  } catch (e) {}
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
 <title>工作流工具台</title>

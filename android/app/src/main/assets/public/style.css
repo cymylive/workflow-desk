@@ -86,15 +86,13 @@ body {
 /* ---------- 安全区（Android 状态栏 / 导航栏 / 刘海） ---------- */
 
 :root {
-  /* 安全区变量，优先级从高到低：
-       1. 原生 MainActivity 注入的 --safe-area-inset-*（最准确）
-       2. html.is-native-app 里写的固定兜底值
-       3. 普通浏览器 0px
-     注意：不能用 env(safe-area-inset-*)，Android WebView 不支持。 */
-  --sat: var(--safe-area-inset-top, 0px);
-  --sab: var(--safe-area-inset-bottom, 0px);
-  --sal: var(--safe-area-inset-left, 0px);
-  --sar: var(--safe-area-inset-right, 0px);
+  /* 直接写死固定值 —— 不再用 var(--xxx, fallback)，因为一旦原生注入
+     把变量设成 0，fallback 就永远不生效。
+     浏览器里由 index.html 的内联脚本归零。 */
+  --sat: 28px;
+  --sab: 40px;
+  --sal: 0px;
+  --sar: 0px;
 }
 
 /* APK 内（原生 WebView）：给固定兜底值。
