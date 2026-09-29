@@ -86,10 +86,22 @@ body {
 /* ---------- 安全区（Android 状态栏 / 导航栏 / 刘海） ---------- */
 
 :root {
-  --sat: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
-  --sab: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
-  --sal: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
-  --sar: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  /* 安全区变量，优先级从高到低：
+       1. 原生 MainActivity 注入的 --safe-area-inset-*（最准确）
+       2. html.is-native-app 里写的固定兜底值
+       3. 普通浏览器 0px
+     注意：不能用 env(safe-area-inset-*)，Android WebView 不支持。 */
+  --sat: var(--safe-area-inset-top, 0px);
+  --sab: var(--safe-area-inset-bottom, 0px);
+  --sal: var(--safe-area-inset-left, 0px);
+  --sar: var(--safe-area-inset-right, 0px);
+}
+
+/* APK 内（原生 WebView）：给固定兜底值。
+   即使原生注入失败，界面也不会被状态栏遮挡。 */
+html.is-native-app {
+  --sat: var(--safe-area-inset-top, 32px);
+  --sab: var(--safe-area-inset-bottom, 48px);
 }
 
 /* ---------- 连接状态徽章 ---------- */
